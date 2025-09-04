@@ -27,46 +27,57 @@ class State(TypedDict):
 
 def google_search(state: State) -> State:
     # Perform Google search and update state
-    return 
+    user_question = state.get("user_question", "")
+    print(f"Performing Google search for: {user_question}")
+
+    google_results = [] 
+    return {"google_results": google_results}
 
 def bing_search(state: State) -> State:
     # Perform Bing search and update state
-    return
+    user_question = state.get("user_question", "")
+    print(f"Performing Bing search for: {user_question}")
+    bing_results = []
+    return {"bing_results": bing_results}
 
 def reddit_search(state: State) -> State:
     # Perform Reddit search and update state
-    return
+    user_question = state.get("user_question", "")
+    print(f"Performing Reddit search for: {user_question}")
+    reddit_results = []
+    return {"reddit_results": reddit_results}
 
 
 def analyze_reddit_posts(state: State) -> State:
     # Analyze Reddit posts and update state
-    return
+
+    return {"selected_reddit_urls": []}
 
 
 def retrieve_reddit_posts(state: State) -> State:
     # Retrieve Reddit posts and update state
-    return
+    return {"reddit_post_data": []}
 
 
 def analyze_google_results(state: State) -> State:
     # Analyze Google search results and update state
-    return
+    return {"google_analysis": []}
 
 
 def analyze_bing_results(state: State) -> State:
     # Analyze Bing search results and update state
-    return
+    return {"bing_analysis": []}
 
 
 
 def analyze_reddit_results(state: State) -> State:
     # Analyze Reddit search results and update state
-    return
+    return {"reddit_analysis": []}
 
 
 def synthesize_results(state: State) -> State:
     # Synthesize results from all sources and update state
-    return
+    return {"final_answer": "Synthesized answer from all sources"}
 
 
 graph_builder = StateGraph(State)
@@ -91,3 +102,57 @@ graph_builder.add_edge("bing_search", "analyze_reddit_posts")
 graph_builder.add_edge("reddit_search", "analyze_reddit_posts")
 graph_builder.add_edge("analyze_reddit_posts", "retrieve_reddit_posts")
 graph_builder.add_edge("retrieve_reddit_posts", "analyze_google_results")
+graph_builder.add_edge("retrieve_reddit_posts", "analyze_bing_results")
+graph_builder.add_edge("retrieve_reddit_posts", "analyze_reddit_results")
+
+
+graph_builder.add_edge("analyze_google_results", "synthesize_results")
+graph_builder.add_edge("analyze_bing_results", "synthesize_results")
+graph_builder.add_edge("analyze_reddit_results", "synthesize_results")
+
+
+graph_builder.add_edge("synthesize_results", END)
+
+graph = graph_builder.compile()
+
+
+def run_chatbot():
+    print("Welcome to the Multi-Source Chatbot!")
+    print("Type exit to quit \n")
+
+
+    while True:
+        user_input = input("Ask me anything: ")
+        if user_input.lower() == "exit": 
+            print("Bye!")
+            break 
+
+        state = {
+            "messages": [{"role": "user", "content": user_input}],
+            "user_question": user_input,
+            "google_results": None,
+            "bing_results": None,
+            "reddit_results": None,
+            "selected_reddit_urls": None,
+            "reddit_post_data": None,
+            "google_analysis": None,
+            "bing_analysis": None,
+            "reddit_analysis": None,
+            "final_answer": None
+        }
+
+
+        print("\n Starting parallel research processing...")
+        print("loading Google, Bing and reddit searches")
+        final_state = graph.run(state)
+
+        if final_state["final_answer"]:
+            print(f"\nFinal Answer: {final_state['final_answer']}")
+        
+
+        print("-" * 80)
+
+
+
+if __name__ == "__main__":
+    run_chatbot()
