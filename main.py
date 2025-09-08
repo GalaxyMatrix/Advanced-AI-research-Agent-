@@ -5,14 +5,25 @@ from langgraph.graph.message import add_messages
 from langchain.chat_models import init_chat_model
 from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
+from webOperations import serp_search, reddit_search_api, reddit_post_retrieval
+from prompts import (
+     get_google_analysis_messages, 
+     get_bing_analysis_messages, 
+     get_reddit_analysis_messages, 
+     get_synthesis_messages,
+     get_reddit_url_analysis_messages
+     )
+
 
 
 load_dotenv()
 
+
+
 llm = init_chat_model("gpt-4o")
 
 class State(TypedDict):
-    messages: Annotated[dict, add_messages()]
+    messages: Annotated[list, add_messages]
     user_question: str | None 
     google_results: str | None
     bing_results: str | None
@@ -25,59 +36,98 @@ class State(TypedDict):
     final_answer: str | None
 
 
-def google_search(state: State) -> State:
-    # Perform Google search and update state
-    user_question = state.get("user_question", "")
-    print(f"Performing Google search for: {user_question}")
+class RedditURLAnalysis(BaseModel):
+    selected_reddit_urls: List[str] = Field( description="List of Reddit URLs that contain valuable information for answering the user's question")
 
-    google_results = [] 
+
+def google_search(state: State) -> State:
+    user_question = state.get("user_question", "")
+    google_results = serp_search(user_question, engine="google")
     return {"google_results": google_results}
 
 def bing_search(state: State) -> State:
-    # Perform Bing search and update state
     user_question = state.get("user_question", "")
-    print(f"Performing Bing search for: {user_question}")
-    bing_results = []
+    bing_results = serp_search(user_question, engine="bing")
     return {"bing_results": bing_results}
 
 def reddit_search(state: State) -> State:
-    # Perform Reddit search and update state
     user_question = state.get("user_question", "")
-    print(f"Performing Reddit search for: {user_question}")
-    reddit_results = []
+    reddit_results = reddit_search_api(user_question)
     return {"reddit_results": reddit_results}
 
 
 def analyze_reddit_posts(state: State) -> State:
-    # Analyze Reddit posts and update state
+    user_question = state.get("user_question", "")
+    reddit_results = state.get("reddit_results", "")
 
-    return {"selected_reddit_urls": []}
+    if not reddit_results:
+        return {"selected_reddit_urls": []}
+    
+    structured_llm = llm.with_structured_output(RedditURLAnalysis)
+    messages = get_reddit_url_analysis_messages(user_question, reddit_results)
+
+    try:
+        analysis = structured_llm.invoke(messages)
+        selected_urls = analysis.selected_reddit_urls
+    except Exception as e:
+        selected_urls = []
+
+    return {"selected_reddit_urls": selected_urls}
 
 
 def retrieve_reddit_posts(state: State) -> State:
-    # Retrieve Reddit posts and update state
-    return {"reddit_post_data": []}
+    selected_urls = state.get("selected_reddit_urls", [])
+
+    if not selected_urls:
+        return {"reddit_post_data": []}
+    
+    reddit_post_data = reddit_post_retrieval(selected_urls)
+
+    if not reddit_post_data:
+        reddit_post_data = []
+    
+    return {"reddit_post_data": reddit_post_data}
 
 
 def analyze_google_results(state: State) -> State:
-    # Analyze Google search results and update state
-    return {"google_analysis": []}
+    user_question = state.get("user_question", "")
+    google_results = state.get("google_results", "")
+    messages = get_google_analysis_messages(user_question, google_results)
+    reply = llm.invoke(messages)
+    return {"google_analysis": reply.content}
 
 
 def analyze_bing_results(state: State) -> State:
-    # Analyze Bing search results and update state
-    return {"bing_analysis": []}
+    user_question = state.get("user_question", "")
+    bing_results = state.get("bing_results", "")
+    messages = get_bing_analysis_messages(user_question, bing_results)
+    reply = llm.invoke(messages)
+    return {"bing_analysis": reply.content}
 
 
 
 def analyze_reddit_results(state: State) -> State:
-    # Analyze Reddit search results and update state
-    return {"reddit_analysis": []}
+    user_question = state.get("user_question", "")
+    reddit_results = state.get("reddit_results", "")
+    reddit_post_data = state.get("reddit_post_data", [])
+    messages = get_reddit_analysis_messages(user_question, reddit_results, reddit_post_data)
+    reply = llm.invoke(messages)
+    return {"reddit_analysis": reply.content}
 
 
 def synthesize_results(state: State) -> State:
-    # Synthesize results from all sources and update state
-    return {"final_answer": "Synthesized answer from all sources"}
+    user_question = state.get("user_question", "")
+    google_analysis = state.get("google_analysis", "")
+    bing_analysis = state.get("bing_analysis", "")
+    reddit_analysis = state.get("reddit_analysis", "")
+
+    messages = get_synthesis_messages(user_question, google_analysis, bing_analysis, reddit_analysis)
+    final_answer = llm.invoke(messages)
+    
+    return {
+        "final_answer": final_answer.content,
+        'messages': [{"role": "assistant", "content": final_answer.content}]
+    }
 
 
 graph_builder = StateGraph(State)
@@ -120,7 +170,6 @@ def run_chatbot():
     print("Welcome to the Multi-Source Chatbot!")
     print("Type exit to quit \n")
 
-
     while True:
         user_input = input("Ask me anything: ")
         if user_input.lower() == "exit": 
@@ -141,15 +190,13 @@ def run_chatbot():
             "final_answer": None
         }
 
-
-        print("\n Starting parallel research processing...")
-        print("loading Google, Bing and reddit searches")
-        final_state = graph.run(state)
+        # Removed: All the progress messages
+        print("\n🔍 Researching your question...")
+        final_state = graph.invoke(state)
 
         if final_state["final_answer"]:
-            print(f"\nFinal Answer: {final_state['final_answer']}")
+            print(f"\n{final_state['final_answer']}")  # Removed "Final Answer:" label
         
-
         print("-" * 80)
 
 
