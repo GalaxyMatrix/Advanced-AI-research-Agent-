@@ -26,7 +26,7 @@ def _make_api_request(url, **kwargs):
 
 def serp_search(query, engine="google"):
     if engine == "google":
-        base_url = "https://www.google.com/search"  # Fixed: removed "WWW" capitalization
+        base_url = "https://www.google.com/search"
     elif engine == "bing":
         base_url = "https://www.bing.com/search"
     else:
@@ -47,7 +47,7 @@ def serp_search(query, engine="google"):
     
     extracted_data = {
         "knowledge": full_response.get("knowledge", {}),
-        "organic": full_response.get("organic", []),  # Fixed: "oraganic" -> "organic"
+        "organic": full_response.get("organic", []),
     }
 
     return extracted_data
@@ -65,7 +65,7 @@ def _trigger_and_download_snapshot(trigger_url, params, data, operation_name="op
         return None
 
     raw_data = download_snapshot(snapshot_id)
-    return raw_data  # Added missing return statement
+    return raw_data
 
 def reddit_search_api(keyword, date="All time", sort_by="Hot", num_of_posts=25):
     trigger_url = "https://api.brightdata.com/datasets/v3/trigger"
@@ -75,9 +75,7 @@ def reddit_search_api(keyword, date="All time", sort_by="Hot", num_of_posts=25):
         "include_errors": "true",
         "type": "discover_new",
         "discover_by": "keyword"
-    
     }
-
 
     data = [
         {
@@ -88,11 +86,10 @@ def reddit_search_api(keyword, date="All time", sort_by="Hot", num_of_posts=25):
         }
     ]
 
-    # Fixed: pass 'data' instead of 'date'
     raw_data = _trigger_and_download_snapshot(trigger_url, params, data, operation_name="reddit")
 
     if not raw_data:
-        return None
+        return {"parsed_data": [], "total_posts": 0}  # Fix: return empty dict instead of None
     
     parsed_data = []
     for post in raw_data:
@@ -101,12 +98,9 @@ def reddit_search_api(keyword, date="All time", sort_by="Hot", num_of_posts=25):
                 "title": post.get("title"),
                 "url": post.get("url"),
             }
-        
-        parsed_data.append(parsed_post)
+            parsed_data.append(parsed_post)
 
     return {"parsed_data" : parsed_data, "total_posts": len(parsed_data)}
-
-
 
 def reddit_post_retrieval(urls, days_ago=0, load_all_replies=False, comment_limit=''):
     trigger_url = "https://api.brightdata.com/datasets/v3/trigger"
@@ -114,11 +108,13 @@ def reddit_post_retrieval(urls, days_ago=0, load_all_replies=False, comment_limi
     params = {
          "dataset_id": "gd_lvzdpsdlw09j6t702",
          "include_errors": "true",
+         "type": "discover_new",  # Fix: add missing type parameter
+         "discover_by": "url",    # Fix: add missing discover_by parameter
     }
 
     data = [
         {
-            "urls": urls,
+            "url": url,
             "days_ago": days_ago,
             "load_all_replies": load_all_replies,
             "comment_limit": comment_limit
@@ -129,18 +125,25 @@ def reddit_post_retrieval(urls, days_ago=0, load_all_replies=False, comment_limi
     raw_data = _trigger_and_download_snapshot(trigger_url, params, data, operation_name="reddit comments")
 
     if not raw_data:
-        return None
+        return {"parsed_comments": [], "total_comments": 0}  # Fix: return empty dict instead of None
     
     parsed_comments = [] 
 
     for comment in raw_data:
-        parsed_comment = {
-            "comment_id": comment.get("comment_id"),
-            "content": comment.get("comment"),
-            "date": comment.get("date_posted"),
-        }
-        parsed_comments.append(parsed_comment)
-    return {"comments": parsed_comments, "total_retrieved": len(parsed_comments)}
+        if isinstance(comment, dict):
+            parsed_comment = {
+                "comment_id": comment.get("comment_id"),
+                "content": comment.get("comment"),
+                "date": comment.get("date_posted"),
+            }
+            parsed_comments.append(parsed_comment)
+    return {"parsed_comments": parsed_comments, "total_comments": len(parsed_comments)}
+
+
+
+
+
+
 
 
 
