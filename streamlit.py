@@ -3,7 +3,23 @@ import asyncio
 import threading
 import time
 from typing import Dict, Any
-from main import graph
+
+# Add error handling for the import
+try:
+    from main import graph
+    GRAPH_AVAILABLE = True
+except ImportError as e:
+    st.error(f"❌ Failed to import main.py: {e}")
+    st.error("Make sure main.py exists and has no syntax errors")
+    GRAPH_AVAILABLE = False
+except Exception as e:
+    st.error(f"❌ Error importing main.py: {e}")
+    GRAPH_AVAILABLE = False
+
+# Stop execution if import failed
+if not GRAPH_AVAILABLE:
+    st.error("Cannot proceed without main.py. Please fix the import error.")
+    st.stop()
 
 # Configure page
 st.set_page_config(
@@ -29,16 +45,19 @@ st.markdown("""
         border-radius: 0.5rem;
         margin: 1rem 0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: #333333 !important;  /* Fix: Force dark text color */
     }
     
     .user-message {
         background-color: #e3f2fd;
         border-left: 4px solid #2196f3;
+        color: #1565c0 !important;  /* Fix: Dark blue text */
     }
     
     .assistant-message {
         background-color: #f3e5f5;
         border-left: 4px solid #9c27b0;
+        color: #7b1fa2 !important;  /* Fix: Dark purple text */
     }
     
     .status-info {
@@ -47,6 +66,7 @@ st.markdown("""
         border-radius: 0.25rem;
         padding: 0.75rem;
         margin: 1rem 0;
+        color: #e65100 !important;  /* Fix: Dark orange text */
     }
     
     .sidebar-info {
@@ -54,6 +74,20 @@ st.markdown("""
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
+        color: #212529 !important;  /* Fix: Dark text */
+    }
+    
+    /* Fix: Override Streamlit's default text colors */
+    .chat-message p, 
+    .chat-message div, 
+    .chat-message span {
+        color: inherit !important;
+    }
+    
+    /* Fix: Make sure strong tags are visible */
+    .chat-message strong {
+        color: #000000 !important;
+        font-weight: bold;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -110,7 +144,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Display chat history
+# Display chat history - Fix the HTML structure
 chat_container = st.container()
 
 with chat_container:
@@ -119,14 +153,14 @@ with chat_container:
             st.markdown(f"""
             <div class="chat-message user-message">
                 <strong>🧑 You:</strong><br>
-                {message['content']}
+                <span style="color: #1565c0 !important;">{message['content']}</span>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
             <div class="chat-message assistant-message">
                 <strong>🤖 AI Research Agent:</strong><br>
-                {message['content']}
+                <span style="color: #7b1fa2 !important;">{message['content']}</span>
             </div>
             """, unsafe_allow_html=True)
 
