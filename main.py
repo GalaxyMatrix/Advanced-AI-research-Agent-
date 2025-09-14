@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import os  # Add this line
 from typing import Annotated, List
 from langgraph.graph import StateGraph, START, END 
 from langgraph.graph.message import add_messages
@@ -14,13 +15,14 @@ from prompts import (
      get_reddit_url_analysis_messages
      )
 
-
-
 load_dotenv()
 
+# Add these 3 lines to fix API key loading:
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-
-llm = init_chat_model("gpt-4o")
+llm = init_chat_model("gpt-4o", api_key=api_key)  # Add api_key parameter
 
 class State(TypedDict):
     messages: Annotated[list, add_messages]
