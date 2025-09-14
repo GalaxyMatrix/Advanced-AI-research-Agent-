@@ -8,7 +8,7 @@ from langgraph.graph.message import add_messages
 from langchain.chat_models import init_chat_model
 from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
-from webOperations import serp_search, reddit_search_api, reddit_post_retrieval
+from webOperations import serp_search, reddit_search_api, reddit_post_retrieval, parallel_search_all_sources
 from prompts import (
      get_google_analysis_messages, 
      get_bing_analysis_messages, 
@@ -261,6 +261,20 @@ def run_chatbot():
             print(f"\n❌ Research failed: {e}")
         
         print("-" * 80)
+
+# Replace your current search functions with this:
+def ultra_fast_search(state: State) -> State:
+    """Ultra-fast parallel search using optimized webOperations"""
+    user_question = state.get("user_question", "")
+    
+    # Use the new parallel search function
+    results = parallel_search_all_sources(user_question)
+    
+    return {
+        "google_results": results.get("google_results"),
+        "bing_results": results.get("bing_results"), 
+        "reddit_results": results.get("reddit_results")
+    }
 
 if __name__ == "__main__":
     run_chatbot()
