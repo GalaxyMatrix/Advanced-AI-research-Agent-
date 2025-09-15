@@ -73,10 +73,6 @@ logs/
 *.tmp
 *.temp
 
-# Project configuration files
-pyproject.toml
-uv.lock
-poetry.lock
-Pipfile.lock
+
 
 
